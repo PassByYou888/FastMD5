@@ -8,17 +8,13 @@ implementation of the MD5 high performance algorithm with delphi
 
 processor architecture: x86,x64
 
-supports platform Win32, Win64, OSX(64), Linux(64)
+supports platform: Win32,Win64
 
 
 ## about author
 fastMD5 assembler algorithm by Maxim Masiutin
  https://github.com/maximmasiutin/MD5_Transform-x64
 
-
-
-delphi imp by 600585@qq.com
- https://github.com/PassByYou888/ZServer4D
 
 
 ## Advantages and Tech details
@@ -57,6 +53,8 @@ The original notice by Peter Sawatzki follows.
 
 
 
+
+
 ## Usage delphi
 
 ```Delphi
@@ -64,3 +62,9 @@ The original notice by Peter Sawatzki follows.
 	FastMD5(@buff[0], length(buff));
 
 ```
+
+
+delphi imp by 600585@qq.com
+ https://github.com/PassByYou888/ZServer4D
+
+2018-1-27

@@ -66,7 +66,7 @@ The original notice by Peter Sawatzki follows.
 
 ```Delphi
 
-	FastMD5(@buff[0], length(buff));
+FastMD5(@buff[0], length(buff));
 
 ```
 
@@ -74,8 +74,6 @@ The original notice by Peter Sawatzki follows.
 delphi imp by 
 
 600585@qq.com
-
-https://github.com/PassByYou888/ZServer4D
 
 
 

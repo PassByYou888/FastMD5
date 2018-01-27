@@ -10,17 +10,21 @@ unit Fast_MD5;
 
 interface
 
+uses Classes;
+
 {$IF Defined(MSWINDOWS)}
 
 type
   TMD5 = array [0 .. 15] of byte;
   PMD5 = ^TMD5;
-function FastMD5(const BuffPtr: PBYTE; BufSiz: NativeUInt): TMD5;
+function FastMD5(const BuffPtr: PBYTE; BufSiz: NativeUInt): TMD5; overload;
+function FastMD5(Stream: TStream; const StartPos, EndPos: Int64): TMD5; overload;
 {$IFEND}
 
 implementation
 
 {$IF Defined(MSWINDOWS)}
+
 (*
   fastMD5 algorithm by Maxim Masiutin
   https://github.com/maximmasiutin/MD5_Transform-x64
@@ -95,53 +99,120 @@ procedure MD5_Transform(var Accu; const Buf); register; external;
 
 function FastMD5(const BuffPtr: PBYTE; BufSiz: NativeUInt): TMD5;
 var
-  CDigest: TMD5;
-  BitLo, BitHi: Cardinal;
-  p: PBYTE;
-  rest, WorkLen: byte;
-  WorkBuf: array [0 .. 63] of byte;
+  digest : TMD5;
+  Lo, Hi : Cardinal;
+  p      : PBYTE;
+  WorkLen: Byte;
+  WorkBuf: array [0 .. 63] of Byte;
 begin
-  BitLo := 0;
-  BitHi := 0;
-  rest := 0;
-  PCardinal(@CDigest[0])^ := $67452301;
-  PCardinal(@CDigest[4])^ := $EFCDAB89;
-  PCardinal(@CDigest[8])^ := $98BADCFE;
-  PCardinal(@CDigest[12])^ := $10325476;
+  Lo := 0;
+  Hi := 0;
+  PCardinal(@digest[0])^ := $67452301;
+  PCardinal(@digest[4])^ := $EFCDAB89;
+  PCardinal(@digest[8])^ := $98BADCFE;
+  PCardinal(@digest[12])^ := $10325476;
 
-  if BitLo + BufSiz shl 3 < BitLo then
-    Inc(BitHi);
+  if Cardinal(BufSiz) shl 3 < 0 then
+      Inc(Hi);
 
-  Inc(BitLo, BufSiz shl 3);
-  Inc(BitHi, BufSiz shr (SizeOf(BufSiz) * 8 - 3));
+  Inc(Lo, Cardinal(BufSiz) shl 3);
+  Inc(Hi, Cardinal(BufSiz) shr 29);
 
   p := BuffPtr;
 
   while BufSiz >= $40 do
-  begin
-    MD5_Transform(CDigest, p^);
-    Inc(p, $40);
-    Dec(BufSiz, $40)
-  end;
+    begin
+      MD5_Transform(digest, p^);
+      Inc(p, $40);
+      Dec(BufSiz, $40);
+    end;
   if BufSiz > 0 then
-  begin
-    rest := BufSiz;
-    move(p^, WorkBuf[0], rest)
-  end;
+      Move(p^, WorkBuf[0], BufSiz);
 
-  Result := PMD5(@CDigest[0])^;
-  WorkBuf[rest] := $80;
-  WorkLen := rest + 1;
+  Result := PMD5(@digest[0])^;
+  WorkBuf[BufSiz] := $80;
+  WorkLen := BufSiz + 1;
   if WorkLen > $38 then
-  begin
-    if WorkLen < $40 then
-      FillChar(WorkBuf[WorkLen], $40 - WorkLen, 0);
-    MD5_Transform(Result, WorkBuf);
-    WorkLen := 0
-  end;
+    begin
+      if WorkLen < $40 then
+          FillChar(WorkBuf[WorkLen], $40 - WorkLen, 0);
+      MD5_Transform(Result, WorkBuf);
+      WorkLen := 0
+    end;
   FillChar(WorkBuf[WorkLen], $38 - WorkLen, 0);
-  PCardinal(@WorkBuf[$38])^ := BitLo;
-  PCardinal(@WorkBuf[$3C])^ := BitHi;
+  PCardinal(@WorkBuf[$38])^ := Lo;
+  PCardinal(@WorkBuf[$3C])^ := Hi;
+  MD5_Transform(Result, WorkBuf);
+end;
+
+function FastMD5(Stream: TStream; const StartPos, EndPos: Int64): TMD5;
+const
+  deltaSize = $40 * $FFFF;
+
+var
+  digest  : TMD5;
+  Lo, Hi  : Cardinal;
+  DeltaBuf: Pointer;
+  BufSiz  : Int64;
+  rest    : Cardinal;
+  p       : PBYTE;
+  WorkLen : Byte;
+  WorkBuf : array [0 .. 63] of Byte;
+begin
+  Lo := 0;
+  Hi := 0;
+  PCardinal(@digest[0])^ := $67452301;
+  PCardinal(@digest[4])^ := $EFCDAB89;
+  PCardinal(@digest[8])^ := $98BADCFE;
+  PCardinal(@digest[12])^ := $10325476;
+
+  BufSiz := EndPos - StartPos;
+  rest := 0;
+
+  if Cardinal(BufSiz) shl 3 < 0 then
+      Inc(Hi);
+
+  Inc(Lo, Cardinal(BufSiz) shl 3);
+  Inc(Hi, Cardinal(BufSiz) shr 29);
+
+  DeltaBuf := GetMemory(deltaSize);
+  Stream.Position := StartPos;
+
+  while BufSiz >= $40 do
+    begin
+      if rest = 0 then
+        begin
+          if BufSiz >= deltaSize then
+              rest := Stream.Read(DeltaBuf^, deltaSize)
+          else
+              rest := Stream.Read(DeltaBuf^, BufSiz);
+
+          p := DeltaBuf;
+        end;
+      MD5_Transform(digest, p^);
+      Inc(p, $40);
+      Dec(BufSiz, $40);
+      Dec(rest, $40);
+    end;
+
+  if BufSiz > 0 then
+      Move(p^, WorkBuf[0], BufSiz);
+
+  FreeMemory(DeltaBuf);
+
+  Result := PMD5(@digest[0])^;
+  WorkBuf[BufSiz] := $80;
+  WorkLen := BufSiz + 1;
+  if WorkLen > $38 then
+    begin
+      if WorkLen < $40 then
+          FillChar(WorkBuf[WorkLen], $40 - WorkLen, 0);
+      MD5_Transform(Result, WorkBuf);
+      WorkLen := 0
+    end;
+  FillChar(WorkBuf[WorkLen], $38 - WorkLen, 0);
+  PCardinal(@WorkBuf[$38])^ := Lo;
+  PCardinal(@WorkBuf[$3C])^ := Hi;
   MD5_Transform(Result, WorkBuf);
 end;
 

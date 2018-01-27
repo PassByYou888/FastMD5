@@ -112,11 +112,11 @@ begin
   PCardinal(@digest[8])^ := $98BADCFE;
   PCardinal(@digest[12])^ := $10325476;
 
-  if Cardinal(BufSiz) shl 3 < 0 then
+  if BufSiz shl 3 < 0 then
       Inc(Hi);
 
-  Inc(Lo, Cardinal(BufSiz) shl 3);
-  Inc(Hi, Cardinal(BufSiz) shr 29);
+  Inc(Lo, BufSiz shl 3);
+  Inc(Hi, BufSiz shr 29);
 
   p := BuffPtr;
 
@@ -127,7 +127,7 @@ begin
       Dec(BufSiz, $40);
     end;
   if BufSiz > 0 then
-      Move(p^, WorkBuf[0], BufSiz);
+      move(p^, WorkBuf[0], BufSiz);
 
   Result := PMD5(@digest[0])^;
   WorkBuf[BufSiz] := $80;
@@ -159,6 +159,19 @@ var
   WorkLen : Byte;
   WorkBuf : array [0 .. 63] of Byte;
 begin
+  {$IFDEF OptimizationMemoryStreamMD5}
+  if Stream is TCoreClassMemoryStream then
+    begin
+      Result := FastMD5(Pointer(NativeUInt(TCoreClassMemoryStream(Stream).Memory) + StartPos), EndPos - StartPos);
+      exit;
+    end;
+  if Stream is TMemoryStream64 then
+    begin
+      Result := FastMD5(TMemoryStream64(Stream).PositionAsPtr(StartPos), EndPos - StartPos);
+      exit;
+    end;
+  {$IFEND}
+  //
   Lo := 0;
   Hi := 0;
   PCardinal(@digest[0])^ := $67452301;
@@ -169,34 +182,40 @@ begin
   BufSiz := EndPos - StartPos;
   rest := 0;
 
-  if Cardinal(BufSiz) shl 3 < 0 then
+  if BufSiz shl 3 < 0 then
       Inc(Hi);
 
-  Inc(Lo, Cardinal(BufSiz) shl 3);
-  Inc(Hi, Cardinal(BufSiz) shr 29);
+  Inc(Lo, BufSiz shl 3);
+  Inc(Hi, BufSiz shr 29);
 
   DeltaBuf := GetMemory(deltaSize);
   Stream.Position := StartPos;
 
-  while BufSiz >= $40 do
+  if BufSiz < $40 then
     begin
-      if rest = 0 then
-        begin
-          if BufSiz >= deltaSize then
-              rest := Stream.Read(DeltaBuf^, deltaSize)
-          else
-              rest := Stream.Read(DeltaBuf^, BufSiz);
+      Stream.Read(DeltaBuf^, BufSiz);
+      p := DeltaBuf;
+    end
+  else
+    while BufSiz >= $40 do
+      begin
+        if rest = 0 then
+          begin
+            if BufSiz >= deltaSize then
+                rest := Stream.Read(DeltaBuf^, deltaSize)
+            else
+                rest := Stream.Read(DeltaBuf^, BufSiz);
 
-          p := DeltaBuf;
-        end;
-      MD5_Transform(digest, p^);
-      Inc(p, $40);
-      Dec(BufSiz, $40);
-      Dec(rest, $40);
-    end;
+            p := DeltaBuf;
+          end;
+        MD5_Transform(digest, p^);
+        Inc(p, $40);
+        Dec(BufSiz, $40);
+        Dec(rest, $40);
+      end;
 
   if BufSiz > 0 then
-      Move(p^, WorkBuf[0], BufSiz);
+      move(p^, WorkBuf[0], BufSiz);
 
   FreeMemory(DeltaBuf);
 

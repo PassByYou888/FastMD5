@@ -11,6 +11,12 @@ processor architecture: x86,x64
 supports platform: Win32,Win64
 
 
+compatible: https and openssl
+
+file support: greater than 4G
+
+
+
 ## about author
 fastMD5 assembler algorithm by Maxim Masiutin
 

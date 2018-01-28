@@ -20,7 +20,7 @@ file support: greater than 4G
 ## about author
 fastMD5 assembler algorithm by Maxim Masiutin
 
- https://github.com/maximmasiutin/MD5_Transform-x64
+https://github.com/maximmasiutin/MD5_Transform-x64
 
 
 
@@ -71,9 +71,9 @@ FastMD5(@buff[0], length(buff));
 ```
 
 
-delphi imp by 
+delphi implementation by 600585@qq.com
 
-600585@qq.com
+https://github.com/PassByYou888/FastMD5/
 
 
 

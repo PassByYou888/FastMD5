@@ -2,15 +2,15 @@
   fastMD5 algorithm by Maxim Masiutin
   https://github.com/maximmasiutin/MD5_Transform-x64
 
-  delphi imp by 600585@qq.com
+  delphi implementation by 600585@qq.com
   https://github.com/PassByYou888/FastMD5/
 *)
 
 
 (*
 processor architecture: x86,x64
-supports platform: 		Win32,Win64
-compatible: 			https and openssl
+supports platform: Win32,Win64
+compatible:	https and openssl
 *)
 
 unit Fast_MD5;
@@ -31,14 +31,6 @@ function FastMD5(Stream: TStream; const StartPos, EndPos: Int64): TMD5; overload
 implementation
 
 {$IF Defined(MSWINDOWS)}
-
-(*
-  fastMD5 algorithm by Maxim Masiutin
-  https://github.com/maximmasiutin/MD5_Transform-x64
-
-  delphi imp by 600585@qq.com
-  https://github.com/PassByYou888/FastMD5/
-*)
 
 {$IF Defined(WIN32)}
 (*
@@ -166,19 +158,6 @@ var
   WorkLen : Byte;
   WorkBuf : array [0 .. 63] of Byte;
 begin
-  {$IFDEF OptimizationMemoryStreamMD5}
-  if Stream is TCoreClassMemoryStream then
-    begin
-      Result := FastMD5(Pointer(NativeUInt(TCoreClassMemoryStream(Stream).Memory) + StartPos), EndPos - StartPos);
-      exit;
-    end;
-  if Stream is TMemoryStream64 then
-    begin
-      Result := FastMD5(TMemoryStream64(Stream).PositionAsPtr(StartPos), EndPos - StartPos);
-      exit;
-    end;
-  {$IFEND}
-  //
   Lo := 0;
   Hi := 0;
   PCardinal(@digest[0])^ := $67452301;
